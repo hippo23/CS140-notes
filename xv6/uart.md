@@ -96,6 +96,12 @@ void uartinit(void) {
 ### `void uartputc`
 
 - We call this if we want to transmit something to the UART connection.
+- If we are panicking (basically, if an error is happening) we want to stall writing to the console (basically, if we were trying to write something and some CPU threw an error, we want to stop that write while we can).
+- **QUESTION: Why do we allow operation to continue even if we are currently panicking? What if we move pass `panicked` before that is set to one?**
+  - Because! If you look at the `void panic` function in the kernel folder file `printf.c`, you'll notice that we are printing something TO the console. If we loop forever, then that panic message will never print.
+  - Notice, however, that in that case, we do grab a lock, hence, no other CPU will be printing to the console. The panicking CPU is **GUARANTEED** to be the last printed message.
+- Similar to the mechanisms described in the [global variables](#global-variables), we use `uart_tx_w` and `uart_tx_r` to simulate a queue.
+  - If it is the case that the transmission FIFO queue is full, we sleep, waiting for a wakeup call to `uart_tx_r` (and, we also assume that we have locked `uart_tx_lock`).
 
 ```c
 // add a character to the output buffer and tell the
@@ -126,6 +132,17 @@ void uartputc(int c) {
 }
 ```
 
+### `void uartputc_sync`
+
+- You might be asking yourself the following two questions:
+  - **QUESTION: What is the purpose of a `uartputc` that doesn't use interrupts?** -
+    - Remember, UART is used to receive input from and give input to the console. But when we think about a console, we are not really talking about the 'terminal' that we are used to, but what we call a serial console. This, in the olden times, was an external device that read data 1-bit at a time and had the ability to display that. QEMU emulates this, but treats that serial console as our terminal. In reality, though, screens are far more complex and involve things like VGA connections, etc.
+    - Nevertheless, we don't use interrupts for the case wherein the kernel (and not the user) is printing something itself (think of the `echo` command) to the 'serial console'. No interrupt will be generated when an `echo` command is executed by the kernel, hence, we need another way to ask xv6 to write it to the serial console.
+  - **QUESTION**: Why do we not have (or not try) to acquire the buffer lock like we did in [uart_putc](#void-uartputc)?
+    - **Deadlock**. This is also the reason why, in [traps](/xv6/traps.md) you will see that we make sure interrupts are off in `kerneltrap` before doing anything else. Imagine we are echo-ing a command, we grab the lock, then we get interrupted. It's another `uartputc`! Now the second interrupt needs the lock, but the interrupted process holds the lock. Hence, nothing will move forward (technically speaking, things could, if a `yield()` occurs for the second interrupt causing us to loop back into the first interrupted process, but that takes a longer time).
+    - Also, note that this applies because we turn on interrupts for syscalls, which is where this will typically be used.
+- To be clear, this is used by `printf()` and `echo` statements. In either case, interrupts aren't guaranteed to be off. Hence, we need to turn off interrupts. Now, as for why we don't lock after we turn off interrupts? Because, well, there's nothing to interrupt us. No deadlock is gonna happen, so it's unnecessary.
+
 ```c
 // alternate version of uartputc() that doesn't
 // use interrupts, for use by kernel printf() and
@@ -149,6 +166,13 @@ void uartputc_sync(int c) {
     pop_off();
 }
 ```
+
+### `void uartstart`
+
+- A lot easier than the past functions. If we have written all that there is to be received (so basically, if all data has been sent to the kernel), then we return.
+- If there is something we want to pass but the `LSR` register is not available yet (meaning that the FIFO is full), then we don't do anything again. It will interrupt (as discussed in the [documentation](#lsr-line-status-register)) again.
+- Otherwise, there is something that we can write, so we write that value, increment our position in the queue, and wakeup any `uartputc` that may have been called but was stopped because there was no available space in our buffer (not the global buffer, our buffer).
+- Then we actually write the data. No need to worry about race conditions, we always have the lock.
 
 ```c
 // if the UART is idle, and a character is waiting
@@ -180,6 +204,10 @@ void uartstart() {
 }
 ```
 
+### `int uartgetc`
+
+- Straightforward, if a character can be read, then we read it. If not, return `-1` (used to break out of a constant reading loop in the next function).
+
 ```c
 // read one input character from the UART.
 // return -1 if none is waiting.
@@ -192,6 +220,11 @@ int uartgetc(void) {
   }
 }
 ```
+
+### `void uartintr`
+
+- This is called from [traps](/xv6/traps.md). When this happens we want to acknowledge the interrupt coming from the UART connection (different from acknowledging the PLIC-level interrupt) so that another interrupt can come in when we are done.
+- We try and read all characters using `uartgetc`. After that, we write as much as we can to the serial console using `uartstart()`.
 
 ```c
 // handle a uart interrupt, raised because input has

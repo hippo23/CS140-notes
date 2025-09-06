@@ -58,6 +58,9 @@ trapinithart(void)
 - If we failed somehow or if the current process got killed (we don't need process lock here as we are not accessing anything private to the process itself i.e. its state).
 - [devintr](`int-devintr`) already handled incrementing the ticks that passed due to a clock interrupt, but we still need to yield the current process to the CPU (this is used due to the behaviour of XV6 to be round-robin, with each timeslot being equal to the clock interrupt. If you were implementing another kind of scheduling algorithm, you'd probably jump into the scheduler).
 - After all that, we just pass the page-table of the process to `a0` and return to [userret](trampoline.md).
+- \*\*QUESTION: Why do we turn on interrupts for system calls right away, but for functions like `devintr()`, we delay it until the very end?
+  - Technically, I don't think we have to interrupt immediately for system calls, but I suppose that since these are user calls we try and service them as fast as possible. We turn it back on, actually, because interrupts can't because another system call won't be called from user space (since we are in kernel space), any thread of deadlock in a another system call is eliminated.
+  - On the other hand, `devintr()` can be called again, and there are locks present. We don't want any deadlock happen, hence, we delay turning interrupts back on.
 
 ```c
 //
