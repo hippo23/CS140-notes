@@ -378,7 +378,7 @@ void uartintr(void) {
 
 #### `FCR` (FIFO Control Register)
 
-- bits 6 - 7: Trigger level for the receiver's FIFO. An interrupt will be triggered if the number of words suprasseses trigger level (basically some kind of buffering).
+- bits 6 - 7: Trigger level for the receiver's FIFO. An interrupt will be triggered if the number of words surpasses trigger level (basically some kind of buffering).
 - bit 5: No use.
 - bit 4: Enables DMA end signaling (different from interrupts).
 - bit 3: Selects the DMA mode (did not go over this).
