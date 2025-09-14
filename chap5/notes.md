@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) {
 - An example is **Drawbridge libOS** which implements a binary-compatible Windows-environment within an isolated user-mode address space, otherwise known as a _picoprocess_.
   - To create a new child process, all that happens is the allocation of a certain part of the address space to that child process, and then the creation of a new thread for it (meaning that it is still part of only one process).
   - The only form of protection here is the picoprocess itself.
-- In Unikernels (wherein everything is in a single address space), it is basically impossible to implement `for()` as is.
+- In Unikernels (wherein everything is in a single address space), it is basically impossible to implement `fork()` as is.
 
 ### Incompatible with heterogeneous hardware
 

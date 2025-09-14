@@ -123,9 +123,9 @@ bread(uint dev, uint blockno)
 }
 ```
 
-- Common sense. Just take note of the need to be locked onto the process.
+### `void bwrite`
 
-````c
+- Common sense. Just take note of the need to be locked onto the process.
 
 ```c
 // Write b's contents to disk.  Must be locked.
@@ -136,9 +136,11 @@ bwrite(struct buf *b)
     panic("bwrite");
   virtio_disk_rw(b, 1);
 }
-````
+```
 
-- Again, very simple if you understood th previous functions. We need to hold the lock (duh), we release that lock (**QUESTION: Why don't we release that lock AFTER we have actually cleared out all trace of us using it**)
+### `void brelse`
+
+- Again, very simple if you understood the previous functions. We need to hold the lock (duh), we release that lock (**QUESTION: Why don't we release that lock AFTER we have actually cleared out all trace of us using it**)
   - It is possible that some other process is about to see this cached block (has incremented `refcnt` and all that) and holds `bcache->lock` while waiting for `b->lock`. On the other hand, we are waiting for `bcache->lock` while hollding `b->lock`, its deadlock 101.
 - If all is nice and dandy, and if no process is currently waiting, we decrement `refcnt` and move it to the head of the buffer cache if it is at zero.
   - The element that is older than it should have ITS newer element point to `b`'s newer element (You're basically just taking it out of its slot and joining the left and the right).
