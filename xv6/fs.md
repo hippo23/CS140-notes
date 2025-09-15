@@ -59,9 +59,9 @@ struct dinode {
 #### `struct buf`
 
 - _valid_ is used when, for example, we are reading a buffer from the disk but it actually hasn't finished yet.
-- _disk_ is for which disk(?) owns the buffer I believe
-- _blockno_, just the displacement within the disk I'd like to think. For the filesystem in qemu (and hence xv6), we just see an array of blocks (is this index the same as the numbering on the disk itself).
-- _lock_ is for dealing with concurrent memory access.
+- _disk_ is for which disk the buffer is currently reading from (although right now I think there is only one disk, as can be seen in [virtiodisk](/xv6/virtiodisk.md)).
+- _blockno_, just the displacement within the disk I'd like to think. For the filesystem in qemu (and hence xv6), we just see an array of blocks (is this index the same as the numbering on the disk itself). (Correct, lol, this is what we are acting on if you look at [virtiodisk](/xv6/virtiodisk.md)).
+- _lock_ is for dealing with concurrent memory uses to a certain block. A block refers to a specific part of memory, and we don
 - _refcnt_
 - _buf_
 - _next_

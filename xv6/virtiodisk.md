@@ -664,6 +664,10 @@ void virtio_disk_rw(struct buf *b, int write) {
 
 ### `void virtio_disk_intr`
 
+- After the device does whatever it needs to do with the buffer, we acknowledge the interrupt it triggers. After that, we need to run `__sync_synchronize()` to make sure that we acknowledge the bit before reading the used ring (**Why is this necessary?**)
+- Following that, we keep going through `used_idx` (which starts at 0), until we match the current used fields. Each time, we read the current info state of the buffer to make sure that no operation failed, and then free the disk and wakeup on `b` (because the original process is waiting for the operation to finish before we continue). Then we increment `used_idx` by one.
+- The lock is necessary because 1) We don't want to get another used buffer added to the ring, but not actually acknowledging the interrupt properly; and 2) We want to avoid lost wakeups, if this wakeup operation manages to execute faster than the sleep operation, then the original process that called the operation will sleep forever. On the other hand, if the sleep is exactly before the wakeup, everything works just fine. If the sleep is after, well it won't go to sleep, because we've already zeroed out the `b->disk`.
+
 ```c
 void virtio_disk_intr() {
   acquire(&disk.vdisk_lock);
