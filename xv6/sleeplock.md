@@ -9,6 +9,7 @@
 ```c
 void
 initsleeplock(struct sleeplock *lk, char *name)
+
 {
   initlock(&lk->lk, "sleep lock");
   lk->name = name;
@@ -27,6 +28,7 @@ initsleeplock(struct sleeplock *lk, char *name)
 - See also, that our condition lock is the `spinlock` of the `sleeplock`. **Can you answer why that is?**
 - If a process is releasing the `sleeplock`, and we did not acquire the `spinlock` inside, then it is possible that the process releases the lock and issues a wakeup before the process goes to sleep. We are waiting for something that will never happen.
   - Hence, we use the conditional lock. It's either the process releases the lock first, and that acquiring immediately works, or, we go to sleep first, and then the wakeup happens.
+- Additionally, in case you may not have noticed, if two processes are sleeping, they won't both be woken and AND BOTH acquire the sleeplock. When a process wakes up, it reacquires the condition lock, hence, only one process can continue.
 
 ```c
 void

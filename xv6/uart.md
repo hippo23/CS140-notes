@@ -174,7 +174,7 @@ void uartputc_sync(int c) {
 
 ### `void uartstart`
 
-- A lot easier than the past functions. If we have written all that there is to be received (so basically, if all data has been sent to the kernel), then we return.
+- A lot easier than the previous functions. If we have written all that there is to be received (so basically, if all data has been sent to the kernel), then we return.
 - If there is something we want to pass but the `LSR` register is not available yet (meaning that the FIFO is full), then we don't do anything again. It will interrupt (as discussed in the [documentation](#lsr-line-status-register)) again.
 - Otherwise, there is something that we can write, so we write that value, increment our position in the queue, and wakeup any `uartputc` that may have been called but was stopped because there was no available space in our buffer (not the global buffer, our buffer).
 - Then we actually write the data. No need to worry about race conditions, we always have the lock.
